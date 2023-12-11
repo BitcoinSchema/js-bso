@@ -2,6 +2,10 @@
 
 Bitcoin Social transaction creation library
 
+```bash
+bun add @bitcoinschema/bso-lib
+```
+
 ```js
 import { createMessage, createPost, createVideo } from "bso";
 ```

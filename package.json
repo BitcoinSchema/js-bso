@@ -1,5 +1,5 @@
 {
-  "name": "@bso/lib",
+  "name": "@bitcoinschema/bso-lib",
   "version": "0.0.1-alpha.1",
   "module": "src/index.ts",
   "type": "module",
