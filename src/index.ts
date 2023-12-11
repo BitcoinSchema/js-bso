@@ -30,7 +30,7 @@ const createPost = (
     contextValue?: string;
     lock?: number;
     lockAddress?: string;
-    lockHeight: string;
+    lockHeight?: string;
     lockSats?: number;
   }
 ) => {

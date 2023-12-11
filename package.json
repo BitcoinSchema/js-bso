@@ -1,5 +1,5 @@
 {
-  "name": "@bso/lib",
+  "name": "@bitcoinschema/bso",
   "version": "0.0.1-alpha.1",
   "module": "src/index.ts",
   "type": "module",
@@ -12,5 +12,26 @@
   "dependencies": {
     "bsv-wasm": "^2.0.2",
     "sigma-protocol": "^0.0.9"
-  }
+  },
+  "description": "Bitcoin Social transaction creation library",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BitcoinSchema/js-bso.git"
+  },
+  "keywords": [
+    "bsv",
+    "bsocial",
+    "bitcoin",
+    "schema"
+  ],
+  "author": "Satchmo",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/BitcoinSchema/js-bso/issues"
+  },
+  "homepage": "https://github.com/BitcoinSchema/js-bso#readme"
 }
