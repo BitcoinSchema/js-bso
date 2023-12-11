@@ -1,0 +1,16 @@
+{
+  "name": "@bso/bso",
+  "version": "0.0.1",
+  "module": "src/index.ts",
+  "type": "module",
+  "devDependencies": {
+    "bun-types": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "bsv-wasm": "^2.0.2",
+    "sigma-protocol": "^0.0.9"
+  }
+}
