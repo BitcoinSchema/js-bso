@@ -1,15 +1,25 @@
 # bso
 
-To install dependencies:
+Bitcoin Social transaction creation library
 
-```bash
-bun install
+```js
+import { createMessage, createPost, createVideo } from "bso";
 ```
 
-To run:
+## createMessage
 
-```bash
-bun run index.ts
+```js
+// Creates a new message transaction in channel #test
+// and returns a `bsv-wasm` transaction
+const message = createMessage("Hello World", "test");
 ```
 
-This project was created using `bun init` in bun v1.0.15. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+## createPost
+
+```js
+// Creates a post with a url context
+const post = createPost("Hello World", {
+  context: "url",
+  contextValue: "https://google.com",
+});
+```
