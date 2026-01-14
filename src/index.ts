@@ -1,36 +1,114 @@
-import {
-	BSocial,
+import BSocial, {
 	BSocialActionType,
 	BSocialContext,
+	type BSocialFollow,
+	type BSocialLike,
 	type BSocialMessage,
 	type BSocialPost,
 	type BSocialVideo,
-} from "@bopen-io/templates";
-import { Script, Transaction, Utils } from "@bsv/sdk";
+} from "@bopen-io/templates/template/bsocial/BSocial.ts";
+import { Script, Transaction, Utils, type PrivateKey } from "@bsv/sdk";
 import { LOCKUP_PREFIX, LOCKUP_SUFFIX } from "./constants";
 import { SignatureProtocol, signTransaction } from "./utils";
 
+// Export signing utilities
 export { signTransaction, SignatureProtocol };
+
+// Export BMAP client
+export {
+	// Types
+	type BmapPost,
+	type BmapQuery,
+	type BmapCollection,
+	type SSEOptions,
+	// REST API
+	getPostsByBapId,
+	getFeedByBapId,
+	searchPosts,
+	getLikesForPost,
+	getLikesByBapId,
+	getFriendsByBapId,
+	getMessagesByBapId,
+	getChannelMessages,
+	// Raw query
+	queryBmap,
+	// Query builders
+	buildPostsQuery,
+	buildMessagesQuery,
+	buildLikesQuery,
+	buildFollowsQuery,
+	buildFriendsQuery,
+	// SSE streaming
+	subscribeToChannel,
+	subscribeToPosts,
+	subscribeToQuery,
+	// Ingest
+	ingestTransaction,
+} from "./bmap";
+
+// Re-export types for convenience
+export type {
+	BSocialFollow,
+	BSocialLike,
+	BSocialMessage,
+	BSocialPost,
+	BSocialVideo,
+};
+export { BSocialActionType, BSocialContext };
 
 export enum Context {
 	Topic = "topic",
 	URL = "url",
 	Tx = "tx",
 	Channel = "channel",
+	BapID = "bapID",
 }
 
 export interface PostOptions {
 	context?: Context;
 	contextValue?: string;
+	tags?: string[];
+	identityKey?: PrivateKey;
 	lock?: boolean;
 	lockAddress?: string;
 	lockHeight?: string;
 	lockSats?: number;
 }
 
+export interface ReplyOptions {
+	tags?: string[];
+	identityKey?: PrivateKey;
+}
+
 export interface VideoOptions {
 	duration?: number;
 	start?: number;
+	identityKey?: PrivateKey;
+}
+
+export interface MessageOptions {
+	channel?: string;
+	toBapId?: string;
+	identityKey?: PrivateKey;
+}
+
+export interface LikeOptions {
+	identityKey?: PrivateKey;
+}
+
+export interface FollowOptions {
+	identityKey?: PrivateKey;
+}
+
+export interface RepostOptions {
+	context?: Context;
+	contextValue?: string;
+	identityKey?: PrivateKey;
+}
+
+export interface FriendOptions {
+	publicKey?: string;
+	identityKey?: PrivateKey;
 }
 
 function contextToSocialContext(context?: Context): BSocialContext | undefined {
@@ -44,6 +122,8 @@ function contextToSocialContext(context?: Context): BSocialContext | undefined {
 			return BSocialContext.TX;
 		case Context.Channel:
 			return BSocialContext.CHANNEL;
+		case Context.BapID:
+			return BSocialContext.BAP_ID;
 		default:
 			return undefined;
 	}
@@ -53,22 +133,44 @@ function textToHex(text: string): string {
 	return Utils.toHex(Utils.toArray(text, "utf8"));
 }
 
-export async function createMessage(message: string, channel?: string): Promise<Transaction> {
+// ============================================================================
+// CREATE FUNCTIONS
+// ============================================================================
+
+/**
+ * Create a message transaction
+ */
+export async function createMessage(
+	message: string,
+	options: MessageOptions = {},
+): Promise<Transaction> {
 	const action: BSocialMessage = {
 		app: "bsocial",
 		type: BSocialActionType.MESSAGE,
 		content: message,
-		context: channel ? BSocialContext.CHANNEL : undefined,
-		contextValue: channel,
 	};
 
-	const lockingScript = await BSocial.createMessage(action);
+	if (options.channel) {
+		action.context = BSocialContext.CHANNEL;
+		action.contextValue = options.channel;
+	} else if (options.toBapId) {
+		action.context = BSocialContext.BAP_ID;
+		action.contextValue = options.toBapId;
+	}
+
+	const lockingScript = await BSocial.createMessage(action, options.identityKey);
 	const tx = new Transaction();
 	tx.addOutput({ satoshis: 0, lockingScript });
 	return tx;
 }
 
-export async function createPost(content: string, options: PostOptions = {}): Promise<Transaction> {
+/**
+ * Create a post transaction
+ */
+export async function createPost(
+	content: string,
+	options: PostOptions = {},
+): Promise<Transaction> {
 	const action: BSocialPost = {
 		app: "bsocial",
 		type: BSocialActionType.POST,
@@ -77,7 +179,11 @@ export async function createPost(content: string, options: PostOptions = {}): Pr
 		contextValue: options.contextValue,
 	};
 
-	const lockingScript = await BSocial.createPost(action);
+	const lockingScript = await BSocial.createPost(
+		action,
+		options.tags,
+		options.identityKey,
+	);
 	const tx = new Transaction();
 	tx.addOutput({ satoshis: 0, lockingScript });
 
@@ -94,6 +200,110 @@ export async function createPost(content: string, options: PostOptions = {}): Pr
 	return tx;
 }
 
+/**
+ * Create a reply transaction
+ */
+export async function createReply(
+	content: string,
+	replyToTxId: string,
+	options: ReplyOptions = {},
+): Promise<Transaction> {
+	const action: BSocialPost = {
+		app: "bsocial",
+		type: BSocialActionType.POST,
+		content,
+	};
+
+	const lockingScript = await BSocial.createReply(
+		action,
+		replyToTxId,
+		options.tags,
+		options.identityKey,
+	);
+	const tx = new Transaction();
+	tx.addOutput({ satoshis: 0, lockingScript });
+	return tx;
+}
+
+/**
+ * Create a like transaction
+ */
+export async function createLike(
+	txid: string,
+	options: LikeOptions = {},
+): Promise<Transaction> {
+	const action: BSocialLike = {
+		app: "bsocial",
+		type: BSocialActionType.LIKE,
+		txid,
+	};
+
+	const lockingScript = await BSocial.createLike(action, options.identityKey);
+	const tx = new Transaction();
+	tx.addOutput({ satoshis: 0, lockingScript });
+	return tx;
+}
+
+/**
+ * Create an unlike transaction
+ */
+export async function createUnlike(
+	txid: string,
+	options: LikeOptions = {},
+): Promise<Transaction> {
+	const action: BSocialLike = {
+		app: "bsocial",
+		type: BSocialActionType.UNLIKE,
+		txid,
+	};
+
+	const lockingScript = await BSocial.createLike(action, options.identityKey);
+	const tx = new Transaction();
+	tx.addOutput({ satoshis: 0, lockingScript });
+	return tx;
+}
+
+/**
+ * Create a follow transaction
+ */
+export async function createFollow(
+	bapId: string,
+	options: FollowOptions = {},
+): Promise<Transaction> {
+	const action: BSocialFollow = {
+		app: "bsocial",
+		type: BSocialActionType.FOLLOW,
+		bapId,
+	};
+
+	const lockingScript = await BSocial.createFollow(action, options.identityKey);
+	const tx = new Transaction();
+	tx.addOutput({ satoshis: 0, lockingScript });
+	return tx;
+}
+
+/**
+ * Create an unfollow transaction
+ */
+export async function createUnfollow(
+	bapId: string,
+	options: FollowOptions = {},
+): Promise<Transaction> {
+	const action: BSocialFollow = {
+		app: "bsocial",
+		type: BSocialActionType.UNFOLLOW,
+		bapId,
+	};
+
+	const lockingScript = await BSocial.createFollow(action, options.identityKey);
+	const tx = new Transaction();
+	tx.addOutput({ satoshis: 0, lockingScript });
+	return tx;
+}
+
+/**
+ * Create a video transaction
+ */
 export async function createVideo(
 	provider: string,
 	videoID: string,
@@ -108,7 +318,67 @@ export async function createVideo(
 		start: options.start,
 	};
 
-	const lockingScript = await BSocial.createVideo(action);
+	const lockingScript = await BSocial.createVideo(action, options.identityKey);
+	const tx = new Transaction();
+	tx.addOutput({ satoshis: 0, lockingScript });
+	return tx;
+}
+
+/**
+ * Create a repost transaction
+ * Note: Repost is not in BSocial template, built manually with MAP
+ */
+export async function createRepost(
+	txid: string,
+	options: RepostOptions = {},
+): Promise<Transaction> {
+	const MAP_PREFIX = "1PuQa7K62MiKCtssSLKy1kh56WWU7MtUR5";
+
+	const mapData = [MAP_PREFIX, "SET", "app", "bsocial", "type", "repost", "tx", txid];
+
+	if (options.context && options.contextValue) {
+		const ctx = contextToSocialContext(options.context);
+		if (ctx) {
+			mapData.push("context", ctx, "contextValue", options.contextValue);
+		}
+	}
+
+	const asmParts = mapData.map((d) => textToHex(d)).join(" ");
+	const lockingScript = Script.fromASM(`OP_0 OP_RETURN ${asmParts}`);
+
+	const tx = new Transaction();
+	tx.addOutput({ satoshis: 0, lockingScript });
+	return tx;
+}
+
+/**
+ * Create a friend request transaction
+ * Note: Friend is not in BSocial template, built manually with MAP
+ */
+export async function createFriend(
+	bapId: string,
+	options: FriendOptions = {},
+): Promise<Transaction> {
+	const MAP_PREFIX = "1PuQa7K62MiKCtssSLKy1kh56WWU7MtUR5";
+
+	const mapData = [
+		MAP_PREFIX,
+		"SET",
+		"app",
+		"bsocial",
+		"type",
+		"friend",
+		"bapID",
+		bapId,
+	];
+
+	if (options.publicKey) {
+		mapData.push("publicKey", options.publicKey);
+	}
+
+	const asmParts = mapData.map((d) => textToHex(d)).join(" ");
+	const lockingScript = Script.fromASM(`OP_0 OP_RETURN ${asmParts}`);
+
 	const tx = new Transaction();
 	tx.addOutput({ satoshis: 0, lockingScript });
 	return tx;

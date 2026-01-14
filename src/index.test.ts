@@ -10,7 +10,7 @@ describe("createMessage", () => {
 	});
 
 	test("creates a message with channel context", async () => {
-		const tx = await createMessage("Hello World", "general");
+		const tx = await createMessage("Hello World", { channel: "general" });
 		expect(tx).toBeDefined();
 		const script = tx.outputs[0].lockingScript.toASM();
 		expect(script).toContain("OP_RETURN");
