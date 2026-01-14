@@ -7,7 +7,7 @@ import BSocial, {
 	type BSocialPost,
 	type BSocialVideo,
 } from "@bopen-io/templates/template/bsocial/BSocial.ts";
-import { Script, Transaction, Utils, type PrivateKey } from "@bsv/sdk";
+import { type PrivateKey, Script, Transaction, Utils } from "@bsv/sdk";
 import { LOCKUP_PREFIX, LOCKUP_SUFFIX } from "./constants";
 import { SignatureProtocol, signTransaction } from "./utils";
 
@@ -16,44 +16,38 @@ export { signTransaction, SignatureProtocol };
 
 // Export BMAP client
 export {
+	type BmapCollection,
 	// Types
 	type BmapPost,
 	type BmapQuery,
-	type BmapCollection,
-	type SSEOptions,
-	// REST API
-	getPostsByBapId,
-	getFeedByBapId,
-	searchPosts,
-	getLikesForPost,
-	getLikesByBapId,
-	getFriendsByBapId,
-	getMessagesByBapId,
-	getChannelMessages,
-	// Raw query
-	queryBmap,
-	// Query builders
-	buildPostsQuery,
-	buildMessagesQuery,
-	buildLikesQuery,
 	buildFollowsQuery,
 	buildFriendsQuery,
+	buildLikesQuery,
+	buildMessagesQuery,
+	// Query builders
+	buildPostsQuery,
+	getChannelMessages,
+	getFeedByBapId,
+	getFriendsByBapId,
+	getLikesByBapId,
+	getLikesForPost,
+	getMessagesByBapId,
+	// REST API
+	getPostsByBapId,
+	// Ingest
+	ingestTransaction,
+	// Raw query
+	queryBmap,
+	type SSEOptions,
+	searchPosts,
 	// SSE streaming
 	subscribeToChannel,
 	subscribeToPosts,
 	subscribeToQuery,
-	// Ingest
-	ingestTransaction,
 } from "./bmap";
 
 // Re-export types for convenience
-export type {
-	BSocialFollow,
-	BSocialLike,
-	BSocialMessage,
-	BSocialPost,
-	BSocialVideo,
-};
+export type { BSocialFollow, BSocialLike, BSocialMessage, BSocialPost, BSocialVideo };
 export { BSocialActionType, BSocialContext };
 
 export enum Context {
@@ -167,10 +161,7 @@ export async function createMessage(
 /**
  * Create a post transaction
  */
-export async function createPost(
-	content: string,
-	options: PostOptions = {},
-): Promise<Transaction> {
+export async function createPost(content: string, options: PostOptions = {}): Promise<Transaction> {
 	const action: BSocialPost = {
 		app: "bsocial",
 		type: BSocialActionType.POST,
@@ -179,11 +170,7 @@ export async function createPost(
 		contextValue: options.contextValue,
 	};
 
-	const lockingScript = await BSocial.createPost(
-		action,
-		options.tags,
-		options.identityKey,
-	);
+	const lockingScript = await BSocial.createPost(action, options.tags, options.identityKey);
 	const tx = new Transaction();
 	tx.addOutput({ satoshis: 0, lockingScript });
 
@@ -228,10 +215,7 @@ export async function createReply(
 /**
  * Create a like transaction
  */
-export async function createLike(
-	txid: string,
-	options: LikeOptions = {},
-): Promise<Transaction> {
+export async function createLike(txid: string, options: LikeOptions = {}): Promise<Transaction> {
 	const action: BSocialLike = {
 		app: "bsocial",
 		type: BSocialActionType.LIKE,
@@ -247,10 +231,7 @@ export async function createLike(
 /**
  * Create an unlike transaction
  */
-export async function createUnlike(
-	txid: string,
-	options: LikeOptions = {},
-): Promise<Transaction> {
+export async function createUnlike(txid: string, options: LikeOptions = {}): Promise<Transaction> {
 	const action: BSocialLike = {
 		app: "bsocial",
 		type: BSocialActionType.UNLIKE,
@@ -361,16 +342,7 @@ export async function createFriend(
 ): Promise<Transaction> {
 	const MAP_PREFIX = "1PuQa7K62MiKCtssSLKy1kh56WWU7MtUR5";
 
-	const mapData = [
-		MAP_PREFIX,
-		"SET",
-		"app",
-		"bsocial",
-		"type",
-		"friend",
-		"bapID",
-		bapId,
-	];
+	const mapData = [MAP_PREFIX, "SET", "app", "bsocial", "type", "friend", "bapID", bapId];
 
 	if (options.publicKey) {
 		mapData.push("publicKey", options.publicKey);

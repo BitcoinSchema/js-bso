@@ -109,9 +109,7 @@ export async function getMessagesByBapId(bapId: string): Promise<BmapPost[]> {
  * Get messages in a channel
  */
 export async function getChannelMessages(channelId: string): Promise<BmapPost[]> {
-	const response = await fetch(
-		`${BMAP_API_BASE}/social/channels/${channelId}/messages`,
-	);
+	const response = await fetch(`${BMAP_API_BASE}/social/channels/${channelId}/messages`);
 	if (!response.ok) throw new Error(`BMAP API error: ${response.status}`);
 	return (await response.json()) as BmapPost[];
 }
@@ -127,10 +125,7 @@ function encodeQuery(query: BmapQuery): string {
 /**
  * Execute a raw BMAP query
  */
-export async function queryBmap(
-	collection: BmapCollection,
-	query: BmapQuery,
-): Promise<BmapPost[]> {
+export async function queryBmap(collection: BmapCollection, query: BmapQuery): Promise<BmapPost[]> {
 	const encoded = encodeQuery(query);
 	const response = await fetch(`${BMAP_API_BASE}/q/${collection}/${encoded}`);
 
@@ -235,10 +230,7 @@ export function buildLikesQuery(options: {
 	};
 }
 
-export function buildFollowsQuery(options: {
-	address?: string;
-	limit?: number;
-}): BmapQuery {
+export function buildFollowsQuery(options: { address?: string; limit?: number }): BmapQuery {
 	return {
 		v: 3,
 		q: {
@@ -253,10 +245,7 @@ export function buildFollowsQuery(options: {
 	};
 }
 
-export function buildFriendsQuery(options: {
-	address?: string;
-	limit?: number;
-}): BmapQuery {
+export function buildFriendsQuery(options: { address?: string; limit?: number }): BmapQuery {
 	return {
 		v: 3,
 		q: {
@@ -279,10 +268,7 @@ export function buildFriendsQuery(options: {
  * Subscribe to real-time updates for a channel
  * Returns an EventSource that can be closed with .close()
  */
-export function subscribeToChannel(
-	channel: string,
-	options: SSEOptions,
-): EventSource {
+export function subscribeToChannel(channel: string, options: SSEOptions): EventSource {
 	const query = buildMessagesQuery({ channel, limit: 1 });
 	const encoded = encodeQuery(query);
 	const url = `${BMAP_API_BASE}/s/message/${encoded}`;
@@ -408,9 +394,7 @@ export function subscribeToQuery(
 /**
  * Submit a transaction to the BMAP indexer
  */
-export async function ingestTransaction(
-	rawTx: string,
-): Promise<{ txid: string }> {
+export async function ingestTransaction(rawTx: string): Promise<{ txid: string }> {
 	const response = await fetch(`${BMAP_API_BASE}/ingest`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
