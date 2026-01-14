@@ -1,89 +1,115 @@
-import { LOCKUP_PREFIX, LOCKUP_SUFFIX } from "../constants";
-import { templates } from "./templates";
-import { TransactionOptions, createTransaction } from "./utils";
+import {
+	BSocial,
+	BSocialActionType,
+	BSocialContext,
+	type BSocialMessage,
+	type BSocialPost,
+	type BSocialVideo,
+} from "@bopen-io/templates";
+import { Script, Transaction, Utils } from "@bsv/sdk";
+import { LOCKUP_PREFIX, LOCKUP_SUFFIX } from "./constants";
+import { SignatureProtocol, signTransaction } from "./utils";
 
-export const enum Context {
-  Topic = "topic",
-  URL = "url",
-  Tx = "tx",
-  Channel = "channel",
+export { signTransaction, SignatureProtocol };
+
+export enum Context {
+	Topic = "topic",
+	URL = "url",
+	Tx = "tx",
+	Channel = "channel",
 }
 
-const createMessage = (message: string, channel?: string) => {
-  const template = templates.find((t) => t.name === "message")!;
-  template.data[1] = message;
-  if (channel) {
-    template.data.push("context");
-    template.data.push("channel");
-    template.data.push("channel");
-    template.data.push(channel);
-  }
-  return createTransaction(template.data);
-};
+export interface PostOptions {
+	context?: Context;
+	contextValue?: string;
+	lock?: boolean;
+	lockAddress?: string;
+	lockHeight?: string;
+	lockSats?: number;
+}
 
-// const scriptTemplate = `${LOCKUP_PREFIX} ${addressHex} ${nLockTimeHexHeight} ${LOCKUP_SUFFIX}`;
+export interface VideoOptions {
+	duration?: number;
+	start?: number;
+}
 
-const createPost = (
-  content: string,
-  options: {
-    context?: Context;
-    contextValue?: string;
-    lock?: number;
-    lockAddress?: string;
-    lockHeight?: string;
-    lockSats?: number;
-  }
-) => {
-  const { context, contextValue } = options;
-  const template = templates.find((t) => t.name === "post")!;
-  template.data[1] = content;
-  if (context && contextValue) {
-    template.data.push(...["context", context, context, contextValue]);
-  }
+function contextToSocialContext(context?: Context): BSocialContext | undefined {
+	if (!context) return undefined;
+	switch (context) {
+		case Context.Topic:
+			return BSocialContext.CHANNEL;
+		case Context.URL:
+			return BSocialContext.PROVIDER;
+		case Context.Tx:
+			return BSocialContext.TX;
+		case Context.Channel:
+			return BSocialContext.CHANNEL;
+		default:
+			return undefined;
+	}
+}
 
-  const { lock, lockAddress, lockHeight, lockSats } = options;
-  let opts: TransactionOptions | undefined;
-  if (lock && lockAddress && lockHeight) {
-    const addressHex = Buffer.from(lockAddress).toString("hex");
-    const nLockTimeHexHeight = Buffer.from(lockHeight).toString("hex");
-    const scriptTemplate = `${LOCKUP_PREFIX} ${addressHex} ${nLockTimeHexHeight} ${LOCKUP_SUFFIX}`;
-    opts = { scripts: [{ asm: scriptTemplate, sats: lockSats }] };
-  }
-  return createTransaction(template.data, opts);
-};
+function textToHex(text: string): string {
+	return Utils.toHex(Utils.toArray(text, "utf8"));
+}
 
-const createVideo = (
-  provider: string,
-  videoID: string,
-  duration?: number,
-  start?: number
-) => {
-  const template = templates.find((t) => t.name === "video")!;
-  const context = "videoID";
-  const contextValue = videoID;
-  const subContext = "provider";
-  const subContextValue = provider;
-  if (context && contextValue) {
-    template.data.push("context");
-    template.data.push(context);
-    template.data.push(context);
-    template.data.push(contextValue);
-  }
-  if (subContext && subContextValue) {
-    template.data.push("subContext");
-    template.data.push(subContext);
-    template.data.push(subContext);
-    template.data.push(subContextValue);
-  }
-  if (duration) {
-    template.data.push("duration");
-    template.data.push(duration.toString());
-  }
-  if (start) {
-    template.data.push("start");
-    template.data.push(start.toString());
-  }
-  return createTransaction(template.data);
-};
+export async function createMessage(message: string, channel?: string): Promise<Transaction> {
+	const action: BSocialMessage = {
+		app: "bsocial",
+		type: BSocialActionType.MESSAGE,
+		content: message,
+		context: channel ? BSocialContext.CHANNEL : undefined,
+		contextValue: channel,
+	};
 
-export { createMessage, createPost, createVideo };
+	const lockingScript = await BSocial.createMessage(action);
+	const tx = new Transaction();
+	tx.addOutput({ satoshis: 0, lockingScript });
+	return tx;
+}
+
+export async function createPost(content: string, options: PostOptions = {}): Promise<Transaction> {
+	const action: BSocialPost = {
+		app: "bsocial",
+		type: BSocialActionType.POST,
+		content,
+		context: contextToSocialContext(options.context),
+		contextValue: options.contextValue,
+	};
+
+	const lockingScript = await BSocial.createPost(action);
+	const tx = new Transaction();
+	tx.addOutput({ satoshis: 0, lockingScript });
+
+	// Handle lock output if specified
+	const { lock, lockAddress, lockHeight, lockSats } = options;
+	if (lock && lockAddress && lockHeight) {
+		const addressHex = textToHex(lockAddress);
+		const heightHex = textToHex(lockHeight);
+		const scriptAsm = `${LOCKUP_PREFIX} ${addressHex} ${heightHex} ${LOCKUP_SUFFIX}`;
+		const lockScript = Script.fromASM(scriptAsm);
+		tx.addOutput({ satoshis: lockSats ?? 0, lockingScript: lockScript });
+	}
+
+	return tx;
+}
+
+export async function createVideo(
+	provider: string,
+	videoID: string,
+	options: VideoOptions = {},
+): Promise<Transaction> {
+	const action: BSocialVideo = {
+		app: "bsocial",
+		type: BSocialActionType.VIDEO,
+		provider,
+		videoID,
+		duration: options.duration,
+		start: options.start,
+	};
+
+	const lockingScript = await BSocial.createVideo(action);
+	const tx = new Transaction();
+	tx.addOutput({ satoshis: 0, lockingScript });
+	return tx;
+}
