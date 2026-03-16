@@ -35,7 +35,7 @@
 		"typescript": "^5.9.3"
 	},
 	"dependencies": {
-		"@bopen-io/templates": "^1.1.6"
+		"@1sat/templates": "^0.0.2"
 	},
 	"repository": {
 		"type": "git",

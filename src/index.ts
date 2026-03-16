@@ -1,13 +1,21 @@
-import BSocial, {
+import {
+	BSocial,
 	BSocialActionType,
 	BSocialContext,
+	PrivateKeySigner,
 	type BSocialFollow,
 	type BSocialLike,
 	type BSocialMessage,
 	type BSocialPost,
 	type BSocialVideo,
-} from "@bopen-io/templates/template/bsocial/BSocial.ts";
+	type Signer,
+} from "@1sat/templates";
 import { type PrivateKey, Script, Transaction, Utils } from "@bsv/sdk";
+
+/** Wrap a PrivateKey as a Signer for BSocial */
+function toSigner(key?: PrivateKey): Signer | undefined {
+	return key ? new PrivateKeySigner(key) : undefined;
+}
 import { LOCKUP_PREFIX, LOCKUP_SUFFIX } from "./constants";
 import { SignatureProtocol, signTransaction } from "./utils";
 
@@ -152,7 +160,7 @@ export async function createMessage(
 		action.contextValue = options.toBapId;
 	}
 
-	const lockingScript = await BSocial.createMessage(action, options.identityKey);
+	const lockingScript = await BSocial.createMessage(action, toSigner(options.identityKey));
 	const tx = new Transaction();
 	tx.addOutput({ satoshis: 0, lockingScript });
 	return tx;
@@ -170,7 +178,7 @@ export async function createPost(content: string, options: PostOptions = {}): Pr
 		contextValue: options.contextValue,
 	};
 
-	const lockingScript = await BSocial.createPost(action, options.tags, options.identityKey);
+	const lockingScript = await BSocial.createPost(action, options.tags, toSigner(options.identityKey));
 	const tx = new Transaction();
 	tx.addOutput({ satoshis: 0, lockingScript });
 
@@ -205,7 +213,7 @@ export async function createReply(
 		action,
 		replyToTxId,
 		options.tags,
-		options.identityKey,
+		toSigner(options.identityKey),
 	);
 	const tx = new Transaction();
 	tx.addOutput({ satoshis: 0, lockingScript });
@@ -222,7 +230,7 @@ export async function createLike(txid: string, options: LikeOptions = {}): Promi
 		txid,
 	};
 
-	const lockingScript = await BSocial.createLike(action, options.identityKey);
+	const lockingScript = await BSocial.createLike(action, toSigner(options.identityKey));
 	const tx = new Transaction();
 	tx.addOutput({ satoshis: 0, lockingScript });
 	return tx;
@@ -238,7 +246,7 @@ export async function createUnlike(txid: string, options: LikeOptions = {}): Pro
 		txid,
 	};
 
-	const lockingScript = await BSocial.createLike(action, options.identityKey);
+	const lockingScript = await BSocial.createLike(action, toSigner(options.identityKey));
 	const tx = new Transaction();
 	tx.addOutput({ satoshis: 0, lockingScript });
 	return tx;
@@ -257,7 +265,7 @@ export async function createFollow(
 		bapId,
 	};
 
-	const lockingScript = await BSocial.createFollow(action, options.identityKey);
+	const lockingScript = await BSocial.createFollow(action, toSigner(options.identityKey));
 	const tx = new Transaction();
 	tx.addOutput({ satoshis: 0, lockingScript });
 	return tx;
@@ -276,7 +284,7 @@ export async function createUnfollow(
 		bapId,
 	};
 
-	const lockingScript = await BSocial.createFollow(action, options.identityKey);
+	const lockingScript = await BSocial.createFollow(action, toSigner(options.identityKey));
 	const tx = new Transaction();
 	tx.addOutput({ satoshis: 0, lockingScript });
 	return tx;
@@ -299,7 +307,7 @@ export async function createVideo(
 		start: options.start,
 	};
 
-	const lockingScript = await BSocial.createVideo(action, options.identityKey);
+	const lockingScript = await BSocial.createVideo(action, toSigner(options.identityKey));
 	const tx = new Transaction();
 	tx.addOutput({ satoshis: 0, lockingScript });
 	return tx;
